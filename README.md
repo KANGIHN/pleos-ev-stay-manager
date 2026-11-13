@@ -123,7 +123,9 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 ## APK 위치
 
-`apps/evstay/app/build/outputs/apk/debug/app-debug.apk` (`assembleDebug` 실행 후 생성)
+- **제출용 release APK**: [`apk/김강인_정차대기배터리매니저_release.apk`](apk/김강인_정차대기배터리매니저_release.apk)
+  (`assembleRelease` 결과에 release 키로 서명, Pleos Connect Emulator v2.1.0에서 설치·실행 확인)
+- 직접 빌드할 때: `./gradlew assembleDebug` → `app/build/outputs/apk/debug/app-debug.apk`
 
 ## 테스트 환경·설정
 
