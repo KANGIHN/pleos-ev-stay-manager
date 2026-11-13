@@ -205,7 +205,8 @@ object StayEstimator {
         val met = exact >= 0.0
         // Display rounding must not turn a small shortfall into "0분 부족" or a margin.
         val shown = exact.roundToInt().let { if (!met && it >= 0) -1 else it }
-        val held = !reserve.homeVerified
+        // Hold "충족 예상" when the home part is unconfirmed (navi) or missing altogether.
+        val held = !reserve.homeVerified || reserve.homeStatus == HomeStatus.UNKNOWN
         if (met) return TargetCheck(targetHours, met = true, marginMinutes = shown, marginExactMinutes = exact, homeVerdictHeld = held)
         val reserveRaw = (reserve.homeNeedRawPercent ?: 0.0) + reserve.marginPercent
         val required = reserveRaw + targetHours * lowEndRate
@@ -231,11 +232,9 @@ object StayEstimator {
         var homeNeed: Double? = null
         for (candidate in input.homeCandidates) {
             val need: Double? = when (candidate) {
+                // A negative value here is the arrival SoC re-based on the current SoC (the raw answer was
+                // checked in HomeCandidates): need > current SoC, i.e. not enough to get home.
                 is HomeEnergy.NaviSocAtDest -> when {
-                    candidate.socAtDestPercent < 0 -> {
-                        rejected += RejectedHome(label(candidate), "도착 시 예상 잔량이 음수(값의 의미 미확인)")
-                        null
-                    }
                     soc != null && candidate.socAtDestPercent > soc -> {
                         rejected += RejectedHome(label(candidate), "도착 시 예상 잔량이 현재 잔량보다 높음")
                         null
@@ -285,6 +284,9 @@ object StayEstimator {
         }
         if (!homeVerified) {
             notes += "내비 응답을 이 집의 경로로 확인하지 못함(응답 목적지 없음·직선거리 대조 불가) — 귀가 판단 보류. 설정에서 집까지 거리를 직접 입력하면 판단"
+        }
+        if (status == HomeStatus.UNKNOWN) {
+            notes += "집까지 정보가 없어 예정 시각 충족 여부도 귀가 기준으로는 판단 보류(부족 쪽 판정은 표시)"
         }
         return ReserveLine(
             homeNeedPercent = clampedNeed,

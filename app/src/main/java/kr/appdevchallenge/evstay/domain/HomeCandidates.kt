@@ -49,7 +49,13 @@ object HomeCandidates {
         if (usableTrip != null) {
             val trusted = usableTrip.trusted
             val requested = usableTrip.socAtRequest
-            if (requested != null && currentSoc != null) {
+            if (usableTrip.estimatedSocAtDest < 0) {
+                // A negative value in the answer itself has no known meaning: not used.
+                issues += RejectedHome("내비 도착 예상 잔량 ${usableTrip.estimatedSocAtDest}%", "응답의 도착 시 예상 잔량이 음수(값의 의미 미확인)")
+            } else if (requested != null && currentSoc != null) {
+                // Home-return energy = SoC at request − SoC at arrival; re-based on the current SoC.
+                // If SoC has dropped since, the re-based arrival SoC can be negative: that means
+                // "not enough to get home", not bad data, and is judged as such by the estimator.
                 val need = requested - usableTrip.estimatedSocAtDest
                 tripCandidates += HomeEnergy.NaviSocAtDest(currentSoc - need, verified = trusted)
             }

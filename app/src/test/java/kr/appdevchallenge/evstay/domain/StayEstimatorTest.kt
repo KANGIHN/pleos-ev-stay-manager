@@ -243,11 +243,15 @@ class StayEstimatorTest {
     }
 
     @Test
-    fun naviNegativeSocAtDest_isRejectedAndNextUsed() {
+    fun naviRebasedNegativeSocAtDest_isUnreachableNotRejected() {
+        // Navi said 35% → 20% (needs 15%); SoC has since dropped to 14%: re-based arrival SoC −1%.
+        // That is "not enough to get home", not bad data; the weaker distance estimate is not used instead.
         val manual = HomeEnergy.Distance(40.0, DistanceSource.MANUAL)
-        val r = StayEstimator.estimate(input().copy(homeCandidates = listOf(HomeEnergy.NaviSocAtDest(-1.0), manual)))
-        assertEquals(manual, r.reserve.homeSource)
-        assertTrue(r.reserve.rejected.single().reason.contains("음수"))
+        val r = StayEstimator.estimate(input(soc = 14.0).copy(homeCandidates = listOf(HomeEnergy.NaviSocAtDest(-1.0), manual)))
+        assertEquals(HomeEnergy.NaviSocAtDest(-1.0), r.reserve.homeSource)
+        assertTrue(r.reserve.rejected.isEmpty())
+        assertEquals(15.0, r.reserve.homeNeedRawPercent!!, 1e-9)
+        assertEquals(StayStatus.HOME_UNREACHABLE, r.status)
     }
 
     @Test
@@ -563,5 +567,28 @@ class StayEstimatorTest {
         )
         val advice = StayDecision.advise(r.target, r.comparisons) as SettingAdvice.CoveredBy
         assertEquals(listOf("공조 끄고 운전석 열선 2단만(조수석 끔) 쓰면"), advice.options.map { it.label })
+    }
+
+    @Test
+    fun noHomeInfo_holdsMetVerdict_butKeepsShortfall() {
+        val now = 10 * hour
+        // Margin-only reserve: plenty of time, but without home information "충족 예상" is not shown.
+        val met = StayEstimator.estimate(input(home = HomeEnergy.Unknown, now = now).copy(targetEndMs = now + 2 * hour))
+        assertEquals(HomeStatus.UNKNOWN, met.reserve.homeStatus)
+        assertTrue(met.target!!.met)
+        assertTrue(met.target!!.homeVerdictHeld)
+        assertEquals(SettingAdvice.HeldUnverifiedHome, StayDecision.advise(met.target, met.comparisons))
+        assertTrue(met.assumptions.any { it.contains("집까지 정보가 없어") })
+        // Warning direction stays: a shortfall is still reported with its numbers.
+        val short = StayEstimator.estimate(input(home = HomeEnergy.Unknown, now = now).copy(targetEndMs = now + 20 * hour))
+        assertTrue(!short.target!!.met)
+        assertTrue(short.target!!.chargePercent!! > 0)
+        // Covered only by a setting change (HVAC off): that is a positive claim too, so it is held.
+        assertEquals(SettingAdvice.HeldUnverifiedHome, StayDecision.advise(short.target, short.comparisons))
+        // With heating kept nothing covers it: the shortfall and its numbers are shown as before.
+        val kept = StayEstimator.estimate(
+            input(home = HomeEnergy.Unknown, now = now).copy(targetEndMs = now + 20 * hour, keepHvacOn = true)
+        )
+        assertTrue(StayDecision.advise(kept.target, kept.comparisons) is SettingAdvice.NotCovered)
     }
 }

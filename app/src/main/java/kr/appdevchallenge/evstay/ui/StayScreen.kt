@@ -221,7 +221,8 @@ private fun DecisionCard(ui: UiState, e: StayEstimate) {
         val (targetText, targetColor) = when {
             t == null -> "머물 예정 시각이 없습니다 — 오른쪽 설정에서 정하면 비교합니다" to Palette.textDim
             t.reached -> "머물 예정 시각 도달 — 대기 완료" to Palette.info
-            t.met && t.homeVerdictHeld -> "${ui.targetEndMs?.let { dateTime(it) } ?: ""}까지 귀가 판단 보류 — 내비 응답 미확인" to Palette.warn
+            t.met && t.homeVerdictHeld -> "${ui.targetEndMs?.let { dateTime(it) } ?: ""}까지 귀가 판단 보류 — " +
+                (if (e.reserve.homeStatus == HomeStatus.UNKNOWN) "집까지 정보 없음" else "내비 응답 미확인") to Palette.warn
             t.met -> "${ui.targetEndMs?.let { dateTime(it) } ?: ""} 충족 예상 · 여유 약 ${minutes(t.marginMinutes)} (현재 가정, 범위의 짧은 쪽 기준)" to Palette.ok
             else -> "${ui.targetEndMs?.let { dateTime(it) } ?: ""}까지 약 ${minutes(-t.marginMinutes)} 부족 (현재 가정, 범위의 짧은 쪽 기준)" to Palette.danger
         }
@@ -234,7 +235,9 @@ private fun DecisionCard(ui: UiState, e: StayEstimate) {
             Text("어떤 설정이면 충족하나", fontSize = 20.sp, color = Palette.textDim)
             val (adviceText, adviceColor) = when (advice) {
                 is SettingAdvice.AlreadyMet -> "지금 설정 그대로 충족 예상" to Palette.ok
-                is SettingAdvice.HeldUnverifiedHome -> "귀가 판단 보류 — 집까지 거리를 직접 입력하면 충족 여부를 판단합니다" to Palette.warn
+                is SettingAdvice.HeldUnverifiedHome -> (if (e.reserve.homeStatus == HomeStatus.UNKNOWN)
+                    "귀가 판단 보류 — 집까지 정보 없음 · '집까지 거리 직접 입력'을 쓰면 판단합니다"
+                else "귀가 판단 보류 — 내비 응답 미확인 · '집까지 거리 직접 입력'을 쓰면 판단합니다") to Palette.warn
                 is SettingAdvice.CoveredBy -> advice.options.joinToString("\n") {
                     "「${it.label}」 → 충족 예상 (짧은 쪽 기준 약 +${minutes(it.lowDeltaExactMinutes.roundToInt())}, 추정)"
                 } to Palette.ok

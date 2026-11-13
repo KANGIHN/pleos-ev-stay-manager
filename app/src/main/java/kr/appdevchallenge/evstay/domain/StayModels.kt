@@ -184,7 +184,7 @@ data class TargetCheck(
     /** Even a full battery would not cover the planned time with the current setting. */
     val chargeBeyondFull: Boolean = false,
     /**
-     * The home-return part rests on an unconfirmed navi answer: "충족 예상" must not be shown;
+     * The home-return part rests on an unconfirmed navi answer or is missing: "충족 예상" must not be shown;
      * the verdict is held until a trusted input (e.g. a directly entered distance) is available.
      */
     val homeVerdictHeld: Boolean = false

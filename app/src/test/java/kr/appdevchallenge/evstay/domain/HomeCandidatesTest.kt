@@ -67,4 +67,16 @@ class HomeCandidatesTest {
         val fresh = HomeCandidates.build(trip.copy(ageMs = HomeCandidates.TRIP_MAX_AGE_MS), false, "home", home, here, 35.0, null)
         assertEquals(HomeEnergy.NaviSocAtDest(31.0), fresh.candidates[0])
     }
+
+    @Test
+    fun naviArrivalSoc_rawNegativeRejected_rebasedNegativeKept() {
+        // Raw answer negative: meaning unknown → reported, not used.
+        val raw = HomeCandidates.build(trip.copy(estimatedSocAtDest = -3), false, "home", home, here, 35.0, null)
+        assertTrue(raw.candidates.none { it is HomeEnergy.NaviSocAtDest })
+        assertTrue(raw.issues.single().reason.contains("음수"))
+        // Requested at 35%, arrival 20% (needs 15%), SoC now 14% → re-based −1%, kept as a candidate.
+        val dropped = HomeCandidates.build(trip.copy(socAtRequest = 35.0, estimatedSocAtDest = 20), false, "home", home, here, 14.0, null)
+        assertEquals(HomeEnergy.NaviSocAtDest(-1.0), dropped.candidates[0])
+        assertTrue(dropped.issues.isEmpty())
+    }
 }

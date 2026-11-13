@@ -20,7 +20,7 @@ sealed interface SettingAdvice {
 
     /**
      * The planned time looks covered (now or with a setting change), but the home-return part rests
-     * on an unconfirmed navi answer, so "충족 예상" is held.
+     * on an unconfirmed navi answer or there is no home information, so "충족 예상" is held.
      */
     data object HeldUnverifiedHome : SettingAdvice
 
